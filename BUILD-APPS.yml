@@ -1,0 +1,225 @@
+#  ────────────────────────────────────────────────────────────────────────────
+#  Desktop builds — BOTH clients, BOTH platforms, in one run.
+#
+#  Paste this over .github/workflows/macos-dmg.yml on github.com.
+#  Committing it starts the build. No buttons, no options.
+#
+#  Six apps come out, as six separate artifacts:
+#
+#      Eaglercraft-26.3-macOS-dmg / -Windows-exe   real 26.3, wss:// servers
+#      26.3-JM-macOS-dmg          / -Windows-exe   26.2 engine + backports, wss://
+#      Gaius-26.3-macOS-dmg       / -Windows-exe   real 26.3, plain Java servers
+#
+#  Don't want all six? Delete the matrix blocks you don't need.
+#
+#  The two clients use different bundle identifiers, so they install side by
+#  side and keep separate worlds. Install both; open whichever you need.
+#
+#  Which client gets packaged is defined in payloads.json.
+#  ────────────────────────────────────────────────────────────────────────────
+
+name: Build desktop apps
+
+on:
+  push:
+    branches:
+      - main
+      - "arena/**"
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-apps
+  cancel-in-progress: true
+
+env:
+  # Branch holding the Tauri project.
+  SOURCE_REF: arena/02e09d53-source-26-3
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - payload: eagler263
+            os: macos-14
+            kind: dmg
+            base: Eaglercraft-26.3
+            label: Eaglercraft 26.3 · macOS
+            artifact: Eaglercraft-26.3-macOS-dmg
+          - payload: eagler263
+            os: windows-latest
+            kind: exe
+            base: Eaglercraft-26.3
+            label: Eaglercraft 26.3 · Windows
+            artifact: Eaglercraft-26.3-Windows-exe
+          - payload: jm
+            os: macos-14
+            kind: dmg
+            base: 26.3-JM
+            label: 26.3-JM · macOS
+            artifact: 26.3-JM-macOS-dmg
+          - payload: jm
+            os: windows-latest
+            kind: exe
+            base: 26.3-JM
+            label: 26.3-JM · Windows
+            artifact: 26.3-JM-Windows-exe
+          - payload: gaius
+            os: macos-14
+            kind: dmg
+            base: Gaius-26.3
+            label: Gaius 26.3 · macOS
+            artifact: Gaius-26.3-macOS-dmg
+          - payload: gaius
+            os: windows-latest
+            kind: exe
+            base: Gaius-26.3
+            label: Gaius 26.3 · Windows
+            artifact: Gaius-26.3-Windows-exe
+
+    steps:
+      - name: Check out the Tauri project
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SOURCE_REF }}
+          fetch-depth: 1
+
+      - name: Preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in package.json payloads.json assets/app-icon.png \
+                   scripts/set-payload.mjs scripts/prepare-game.mjs \
+                   scripts/perf-preamble.js \
+                   src-tauri/Cargo.toml src-tauri/tauri.conf.json \
+                   src-tauri/build.rs src-tauri/src/main.rs; do
+            [ -e "$f" ] || { echo "missing: $f"; missing=1; }
+          done
+          [ "$missing" -eq 0 ] || { echo "::error::Branch '$SOURCE_REF' is missing project files."; exit 1; }
+          node -e "JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('payloads.json','utf8'))"
+          node --check scripts/perf-preamble.js
+          echo "Preflight OK"
+
+      - name: Select the game client
+        shell: bash
+        env:
+          GAME_URL: ${{ vars.GAME_URL }}
+        run: node scripts/set-payload.mjs "${{ matrix.payload }}"
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.kind == 'dmg' && 'aarch64-apple-darwin,x86_64-apple-darwin' || 'x86_64-pc-windows-msvc' }}
+
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ matrix.os }}-cargo-${{ matrix.payload }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+          restore-keys: ${{ matrix.os }}-cargo-${{ matrix.payload }}-
+
+      - name: Cache the game payload
+        uses: actions/cache@v6
+        with:
+          path: .game-cache
+          key: game-${{ matrix.payload }}-${{ hashFiles('game.lock.json') }}
+
+      - name: Install JS tooling
+        run: npm install --no-audit --no-fund
+
+      - name: Fetch, verify and prepare the game payload
+        run: node scripts/prepare-game.mjs
+
+      - name: Generate application icons
+        run: npx tauri icon assets/app-icon.png
+
+      # ---------------------------------------------------------------- macOS
+      - name: Build the universal .dmg
+        if: matrix.kind == 'dmg'
+        run: npx tauri build --target universal-apple-darwin --bundles dmg
+
+      - name: Collect the .dmg
+        if: matrix.kind == 'dmg'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          found=0
+          while IFS= read -r -d '' f; do cp "$f" out/; found=1; done \
+            < <(find src-tauri/target -name '*.dmg' -print0)
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No .dmg was produced."
+            find src-tauri/target -maxdepth 5 -type d -name bundle || true
+            exit 1
+          fi
+          cd out
+          for f in *.dmg; do mv -f "$f" "${{ matrix.base }}-macOS-universal.dmg"; break; done
+          shasum -a 256 * | tee SHA256SUMS.txt
+          ls -lh
+
+      # -------------------------------------------------------------- Windows
+      - name: Build the Windows installer
+        if: matrix.kind == 'exe'
+        run: npx tauri build --bundles nsis
+
+      - name: Collect the .exe files
+        if: matrix.kind == 'exe'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          base="${{ matrix.base }}"
+
+          setup="$(find src-tauri/target -path '*bundle/nsis/*.exe' | head -1 || true)"
+          if [ -z "$setup" ]; then
+            echo "::error::No NSIS installer was produced."
+            find src-tauri/target -maxdepth 5 -type d -name bundle || true
+            exit 1
+          fi
+          cp "$setup" "out/${base}-Windows-Setup.exe"
+
+          app="$(find src-tauri/target/release -maxdepth 1 -name '*.exe' | head -1 || true)"
+          if [ -n "$app" ]; then cp "$app" "out/${base}-Windows-portable.exe"; fi
+
+          cd out
+          sha256sum * | tee SHA256SUMS.txt
+          ls -lh
+
+      # --------------------------------------------------------------- upload
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### ${{ matrix.label }}"
+            echo
+            if [ -d out ]; then
+              echo '```'; ls -lh out; echo '```'
+              echo "Artifact: **${{ matrix.artifact }}**"
+            else
+              echo "No artifact produced — check the logs."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

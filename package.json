@@ -1,0 +1,19 @@
+{
+  "name": "source-26-3-desktop",
+  "private": true,
+  "version": "26.3.1",
+  "description": "26.3-JM desktop app (Tauri) \u2014 ultra-high-performance native macOS and Windows builds",
+  "type": "module",
+  "scripts": {
+    "prepare:game": "node scripts/prepare-game.mjs",
+    "icons": "tauri icon assets/app-icon.png",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "dmg": "npm run prepare:game && tauri icon assets/app-icon.png && tauri build --target universal-apple-darwin --bundles dmg",
+    "dmg:native": "npm run prepare:game && tauri icon assets/app-icon.png && tauri build --bundles dmg",
+    "exe": "npm run prepare:game && tauri icon assets/app-icon.png && tauri build --bundles nsis"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.1"
+  }
+}

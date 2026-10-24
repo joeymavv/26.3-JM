@@ -1,0 +1,31 @@
+[package]
+name = "source-26-3-desktop"
+version = "26.3.1"
+description = "26.3-JM native desktop shell"
+authors = ["Joey-JM"]
+edition = "2021"
+rust-version = "1.77.2"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+# Ultra-high-performance release profile: everything tuned for runtime speed
+# and a small, fast-launching binary rather than for compile time.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+incremental = false
+debug = false
+overflow-checks = false
+
+# The embedded 86 MB game payload is decompressed at startup, so build the
+# compression/codegen dependencies with optimisations even in dev builds.
+[profile.dev.package."*"]
+opt-level = 2

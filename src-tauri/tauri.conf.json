@@ -1,0 +1,109 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Eaglercraft 26.3",
+  "version": "26.3.1",
+  "identifier": "net.eaglercraft.client263",
+  "mainBinaryName": "Eaglercraft-26.3",
+  "build": {
+    "frontendDist": "../dist",
+    "beforeDevCommand": "node scripts/prepare-game.mjs",
+    "beforeBuildCommand": "node scripts/prepare-game.mjs"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "macOSPrivateApi": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Eaglercraft 26.3",
+        "url": "index.html",
+        "width": 1280,
+        "height": 760,
+        "minWidth": 640,
+        "minHeight": 400,
+        "center": true,
+        "resizable": true,
+        "maximizable": true,
+        "fullscreen": false,
+        "focus": true,
+        "visible": true,
+        "decorations": true,
+        "titleBarStyle": "Visible",
+        "theme": "Dark",
+        "backgroundColor": "#000000",
+        "backgroundThrottling": "disabled",
+        "zoomHotkeysEnabled": false,
+        "dragDropEnabled": false,
+        "allowLinkPreview": false,
+        "devtools": false,
+        "incognito": false,
+        "shadow": true,
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --enable-accelerated-2d-canvas --canvas-oop-rasterization --use-angle=d3d11 --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows"
+      }
+    ],
+    "security": {
+      "csp": null,
+      "freezePrototype": false,
+      "assetProtocol": {
+        "enable": false,
+        "scope": []
+      },
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Game",
+    "publisher": "Joey-JM",
+    "copyright": "Minecraft content and assets © Mojang. Build by Joey-JM, based on Eaglercraft 26.2 by o_xer.",
+    "shortDescription": "26.3-JM — native macOS build",
+    "longDescription": "26.3-JM is a custom browser build based on Eaglercraft 26.2 with selected Minecraft 26.3 features backported, packaged as a native macOS application with ultra-high-performance rendering enabled.",
+    "homepage": "https://github.com/joeymavv/26.3-JM",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "hardenedRuntime": false,
+      "entitlements": "entitlements.plist",
+      "dmg": {
+        "windowSize": {
+          "width": 660,
+          "height": 420
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 180
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 180
+        }
+      },
+      "infoPlist": "Info.plist"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "allowDowngrades": true,
+      "nsis": {
+        "installMode": "currentUser",
+        "compression": "lzma",
+        "displayLanguageSelector": false,
+        "languages": [
+          "English"
+        ],
+        "startMenuFolder": "26.3-JM"
+      }
+    }
+  }
+}

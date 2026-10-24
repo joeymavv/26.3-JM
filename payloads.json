@@ -1,0 +1,91 @@
+{
+  "comment": [
+    "Every game client this project can package, and the app identity each one ships under.",
+    "",
+    "Pick one with:  node scripts/set-payload.mjs <id>",
+    "The CI matrix builds 'jm' and 'gaius' side by side.",
+    "",
+    "Each payload gets its own bundle identifier, so the apps install alongside each",
+    "other and keep separate world storage instead of fighting over the same slot."
+  ],
+  "default": "jm",
+  "payloads": {
+    "jm": {
+      "label": "26.3-JM",
+      "description": "Eaglercraft 26.2 by o_xer with selected 26.3 features backported, by Joey-JM. Joins Eaglercraft wss:// servers.",
+      "multiplayer": "Eaglercraft servers (wss:// via EaglerXServer proxies)",
+      "project": "https://github.com/joeymavv/26.3-JM",
+      "filename": "26.3-fixed.html",
+      "url": "https://github.com/joeymavv/26.3-JM/releases/download/v26.3-jm.1/26.3-fixed.html",
+      "size": 85825296,
+      "sha256": "1716c4673de4ab5b03ac9ac6ebe8d4db1358f6008825b84fcb4bb05c7228a610",
+      "app": {
+        "productName": "26.3-JM",
+        "mainBinaryName": "26.3-JM",
+        "identifier": "com.joeyjm.mc263"
+      }
+    },
+    "eagler263": {
+      "label": "Eaglercraft 26.3",
+      "description": "Prebuilt single-file Eaglercraft 26.3 client published by DhyeyBG. The repository contains only the compiled index.html - there is no source to build from.",
+      "multiplayer": "Eaglercraft servers (wss:// via EaglerXServer proxies) - expected, not verified",
+      "project": "https://github.com/DhyeyBG/Eaglercraft-26.3",
+      "pinnedCommit": "1c331e5268dff3c627da2301e22e9288fc46970a",
+      "gitBlobSha1": "a2822ca37149742909f68ab3552410f00d64bd91",
+      "filename": "Eaglercraft-26.3.html",
+      "url": "https://raw.githubusercontent.com/DhyeyBG/Eaglercraft-26.3/1c331e5268dff3c627da2301e22e9288fc46970a/index.html",
+      "size": 77863500,
+      "sha256": "",
+      "app": {
+        "productName": "Eaglercraft 26.3",
+        "mainBinaryName": "Eaglercraft-26.3",
+        "identifier": "net.eaglercraft.client263"
+      }
+    },
+    "gaius": {
+      "label": "Gaius 26.3",
+      "description": "Official Minecraft 26.3 client bytecode compiled with TeaVM. Joins ordinary offline-mode Java servers through a RelayNode.",
+      "multiplayer": "Ordinary Java servers (relay tunnel, offline-mode only). Cannot join Eaglercraft wss:// servers.",
+      "project": "https://github.com/TypeThe0ry/Gaius",
+      "filename": "Gaius-26.3.html",
+      "url": "https://github.com/TypeThe0ry/Gaius/releases/download/v0.3.3/Gaius-26.3.html",
+      "size": 129069152,
+      "sha256": "0c1ab5fc49c244bac0f16ef000a9f4f36fa3414180f02a6775c4977c672c97d3",
+      "app": {
+        "productName": "Gaius 26.3",
+        "mainBinaryName": "Gaius-26.3",
+        "identifier": "net.gaius.client263"
+      }
+    },
+    "gaius-26.2": {
+      "label": "Gaius 26.2",
+      "description": "Same as above, Minecraft 26.2.",
+      "multiplayer": "Ordinary Java servers (relay tunnel, offline-mode only).",
+      "project": "https://github.com/TypeThe0ry/Gaius",
+      "filename": "Gaius-26.2.html",
+      "url": "https://github.com/TypeThe0ry/Gaius/releases/download/v0.3.3/Gaius-26.2.html",
+      "size": 120997899,
+      "sha256": "79a7e960631a94b2433caefec02a29a82d7844f7cc35ddd5b5dadd7395cb2275",
+      "app": {
+        "productName": "Gaius 26.2",
+        "mainBinaryName": "Gaius-26.2",
+        "identifier": "net.gaius.client262"
+      }
+    },
+    "custom": {
+      "label": "Custom",
+      "description": "Whatever the GAME_URL environment variable / repository variable points at. Use this for a self-hosted client.goldhq.net offline export.",
+      "multiplayer": "unknown",
+      "project": "",
+      "filename": "custom-client.html",
+      "url": "",
+      "size": 0,
+      "sha256": "",
+      "app": {
+        "productName": "Custom Client",
+        "mainBinaryName": "Custom-Client",
+        "identifier": "net.custom.client263"
+      }
+    }
+  }
+}

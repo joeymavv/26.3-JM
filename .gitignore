@@ -1,0 +1,22 @@
+# Build output
+dist/
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# The 86 MB game payload is fetched from GitHub Releases at build time
+.game-cache/
+*.html.download
+
+# Generated icons (regenerated from assets/app-icon.png by `npm run icons`)
+src-tauri/icons/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Rust
+Cargo.lock
+
+# macOS
+.DS_Store

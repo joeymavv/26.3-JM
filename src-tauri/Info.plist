@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>26.3-JM</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Minecraft content and assets © Mojang.</string>
+
+	<!-- ===== Ultra high performance ===== -->
+
+	<!-- Always render at native Retina resolution. -->
+	<key>NSHighResolutionCapable</key>
+	<true/>
+
+	<!-- Never let macOS App Nap throttle timers, I/O or CPU priority. -->
+	<key>LSAppNapIsDisabled</key>
+	<true/>
+
+	<!-- Pin the app to the discrete / high-power GPU on multi-GPU Macs. -->
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<false/>
+
+	<!-- ===== Behaviour ===== -->
+
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.games</string>
+	<key>LSMultipleInstancesProhibited</key>
+	<true/>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<false/>
+
+	<!-- Multiplayer servers are reached over ws:// and wss:// on arbitrary hosts. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

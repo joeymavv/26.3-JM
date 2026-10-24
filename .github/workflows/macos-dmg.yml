@@ -1,0 +1,206 @@
+#  ────────────────────────────────────────────────────────────────────────────
+#  26.3-JM  →  macOS .dmg
+#
+#  UPLOAD THIS FILE TO:  .github/workflows/macos-dmg.yml
+#
+#  On github.com:  Add file ▸ Upload files ▸ drop this file in ▸ type the path
+#                  .github/workflows/macos-dmg.yml ▸ Commit changes
+#
+#  THEN RUN IT:    Actions tab ▸ "Build macOS DMG" ▸ Run workflow ▸ Run workflow
+#  GET THE DMG:    open the finished run ▸ Artifacts ▸ 26.3-JM-macOS-dmg
+#
+#  It does not matter which branch you upload this to. The job always checks out
+#  the branch named in `source_ref` (below), which is where the Tauri project
+#  actually lives.
+#  ────────────────────────────────────────────────────────────────────────────
+
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Branch/tag/SHA holding the Tauri project"
+        type: string
+        default: "arena/02e09d53-source-26-3"
+      universal:
+        description: "Universal binary (Apple Silicon + Intel). Uncheck for a faster Apple-Silicon-only build."
+        type: boolean
+        default: true
+      publish_release:
+        description: "Also attach the DMG to a GitHub release"
+        type: boolean
+        default: false
+      release_tag:
+        description: "Release tag to create/update when publishing"
+        type: string
+        default: "desktop-v26.3.1"
+
+concurrency:
+  group: macos-dmg-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dmg:
+    name: Build .dmg on macOS
+    runs-on: macos-14
+    timeout-minutes: 120
+
+    steps:
+      - name: Verify the source branch exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${{ github.repository }}/commits/$REF" --jq .sha >/dev/null 2>&1; then
+            echo "Found '$REF'."
+            exit 0
+          fi
+          echo "::error::No branch, tag or commit named '$REF' exists in ${{ github.repository }}."
+          echo "Available branches:"
+          gh api "repos/${{ github.repository }}/branches" --jq '.[] | "  - " + .name' || true
+          echo
+          echo "Re-run this workflow and set the 'source_ref' input to the branch that contains src-tauri/."
+          exit 1
+
+      - name: Checkout the Tauri project
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 1
+
+      - name: Sanity-check the checkout
+        run: |
+          set -euo pipefail
+          missing=0
+          for f in package.json game.lock.json assets/app-icon.png \
+                   scripts/prepare-game.mjs scripts/perf-preamble.js \
+                   src-tauri/Cargo.toml src-tauri/tauri.conf.json \
+                   src-tauri/Info.plist src-tauri/entitlements.plist \
+                   src-tauri/src/main.rs; do
+            if [ ! -e "$f" ]; then echo "missing: $f"; missing=1; fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::The ref '${{ inputs.source_ref }}' does not contain the Tauri desktop project."
+            echo "::error::Re-run this workflow and set 'source_ref' to the branch that has src-tauri/ in it."
+            exit 1
+          fi
+          echo "Project looks good."
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.toml') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Cache the 86 MB game payload
+        uses: actions/cache@v6
+        with:
+          path: .game-cache
+          key: game-${{ hashFiles('game.lock.json') }}
+
+      - name: Install JS tooling
+        run: npm install --no-audit --no-fund
+
+      - name: Fetch, verify and prepare the game payload
+        run: node scripts/prepare-game.mjs
+
+      - name: Generate application icons
+        run: npx tauri icon assets/app-icon.png
+
+      - name: Build universal .dmg
+        if: ${{ inputs.universal }}
+        run: npx tauri build --target universal-apple-darwin --bundles dmg
+
+      - name: Build Apple-Silicon-only .dmg
+        if: ${{ !inputs.universal }}
+        run: npx tauri build --bundles dmg
+
+      - name: Collect the .dmg
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          found=0
+          while IFS= read -r -d '' f; do
+            cp "$f" out/
+            found=1
+          done < <(find src-tauri/target -name '*.dmg' -print0)
+
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No .dmg was produced."
+            find src-tauri/target -maxdepth 5 -type d -name bundle || true
+            exit 1
+          fi
+
+          cd out
+          if [ "${{ inputs.universal }}" = "true" ]; then
+            suffix="universal"
+          else
+            suffix="arm64"
+          fi
+          for f in *.dmg; do
+            mv -f "$f" "26.3-JM-macOS-${suffix}.dmg"
+            break
+          done
+          shasum -a 256 *.dmg | tee SHA256SUMS-dmg.txt
+          ls -lh
+
+      - name: Upload the .dmg
+        uses: actions/upload-artifact@v7
+        with:
+          name: 26.3-JM-macOS-dmg
+          path: out/*
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish release
+        if: ${{ inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.release_tag }}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "26.3-JM for macOS — $TAG" \
+              --target "$(git rev-parse HEAD)" \
+              --notes "Native macOS build of 26.3-JM (Tauri, ultra-high-performance mode).
+
+          The app is not notarised. After dragging it to Applications, run:
+
+              xattr -dr com.apple.quarantine /Applications/26.3-JM.app
+
+          or right-click the app and choose Open."
+          fi
+          gh release upload "$TAG" out/* --clobber
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### 26.3-JM macOS build"
+            echo
+            if [ -d out ]; then
+              echo '```'
+              ls -lh out
+              echo '```'
+              echo "Download it from the **Artifacts** section of this run: \`26.3-JM-macOS-dmg\`"
+            else
+              echo "No artifacts were produced — check the logs above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
